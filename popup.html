@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Tab Recorder</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Tab Recorder</h2>
+
+    <div class="status-section">
+      <div class="status-display">
+        <span id="status">Idle</span>
+      </div>
+      <div class="duration-display">
+        <span id="duration">00:00:00</span>
+      </div>
+    </div>
+
+    <div class="button-section">
+      <button id="recordBtn" class="btn btn-record">Start Recording</button>
+      <button id="downloadBtn" class="btn btn-download" disabled>Download Video</button>
+    </div>
+
+    <div class="info-section">
+      <small id="fileSize"></small>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
