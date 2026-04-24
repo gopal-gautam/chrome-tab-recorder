@@ -6,19 +6,34 @@ let recordingState = {
   fileSize: 0
 };
 
-let mediaRecorder = null;
-let recordedChunks = [];
 let recordingStartTime = null;
-let activeStream = null;
-let activeTabId = null;
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'toggleRecording') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
-        toggleRecording(tabs[0].id).then(() => {
-          sendResponse(recordingState);
-        });
+        const tabId = tabs[0].id;
+        if (recordingState.recording) {
+          chrome.tabs.sendMessage(tabId, { action: 'stopRecording' }, (response) => {
+            recordingState.recording = false;
+            recordingState.status = 'Stopped';
+            recordingState.hasStopped = true;
+            sendResponse(recordingState);
+          });
+        } else {
+          recordingState.hasStopped = false;
+          chrome.tabs.sendMessage(tabId, { action: 'startRecording' }, (response) => {
+            if (response && response.success) {
+              recordingState.recording = true;
+              recordingState.status = 'Recording...';
+              recordingStartTime = Date.now();
+              sendResponse(recordingState);
+            } else {
+              recordingState.status = 'Error: ' + (response?.error || 'Unknown error');
+              sendResponse(recordingState);
+            }
+          });
+        }
       }
     });
     return true;
@@ -29,110 +44,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse(recordingState);
     return false;
   } else if (request.action === 'download') {
-    downloadRecording();
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'getRecordedData' }, (response) => {
+          if (response && response.success) {
+            const arrayBuffer = response.data;
+            const blob = new Blob([new Uint8Array(arrayBuffer)], { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const filename = `recording-${timestamp}.webm`;
+
+            chrome.downloads.download({
+              url: url,
+              filename: filename,
+              saveAs: true
+            });
+
+            setTimeout(() => {
+              URL.revokeObjectURL(url);
+            }, 1000);
+          }
+        });
+      }
+    });
     return false;
   }
 });
-
-function toggleRecording(tabId) {
-  if (recordingState.recording) {
-    stopRecording();
-  } else {
-    startRecording(tabId);
-  }
-  return Promise.resolve();
-}
-
-function startRecording(tabId) {
-  try {
-    activeTabId = tabId;
-    recordedChunks = [];
-    recordingState.hasStopped = false;
-
-    chrome.tabCapture.capture({
-      video: true,
-      audio: false
-    }, (stream) => {
-      if (!stream) {
-        recordingState.status = 'Error: Could not capture tab';
-        console.error('Failed to capture tab');
-        return;
-      }
-
-      activeStream = stream;
-
-      const mimeType = 'video/webm;codecs=vp8';
-      const options = {
-        mimeType: mimeType,
-        videoBitsPerSecond: 5000000
-      };
-
-      try {
-        mediaRecorder = new MediaRecorder(stream, options);
-
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            recordedChunks.push(event.data);
-            recordingState.fileSize = recordedChunks.reduce((total, chunk) => total + chunk.size, 0);
-          }
-        };
-
-        mediaRecorder.onstop = () => {
-          recordingState.recording = false;
-          recordingState.status = 'Stopped';
-          recordingState.hasStopped = true;
-
-          if (activeStream) {
-            activeStream.getTracks().forEach(track => track.stop());
-            activeStream = null;
-          }
-        };
-
-        mediaRecorder.onerror = (event) => {
-          console.error('MediaRecorder error:', event);
-          recordingState.status = 'Error: ' + event.error;
-        };
-
-        mediaRecorder.start();
-        recordingState.recording = true;
-        recordingState.status = 'Recording...';
-        recordingStartTime = Date.now();
-      } catch (error) {
-        console.error('Error creating MediaRecorder:', error);
-        recordingState.status = 'Error: ' + error.message;
-      }
-    });
-  } catch (error) {
-    console.error('Error starting recording:', error);
-    recordingState.status = 'Error: ' + error.message;
-  }
-}
-
-function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
-  }
-}
-
-function downloadRecording() {
-  if (recordedChunks.length === 0) {
-    console.warn('No recording to download');
-    return;
-  }
-
-  const blob = new Blob(recordedChunks, { type: 'video/webm' });
-  const url = URL.createObjectURL(blob);
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-  const filename = `recording-${timestamp}.webm`;
-
-  chrome.downloads.download({
-    url: url,
-    filename: filename,
-    saveAs: true
-  });
-
-  setTimeout(() => {
-    URL.revokeObjectURL(url);
-  }, 1000);
-}
