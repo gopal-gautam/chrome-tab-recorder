@@ -4,13 +4,8 @@
   "version": "1.0.0",
   "description": "Record any browser tab and download as WebM video",
   "permissions": [
-    "activeTab",
     "downloads",
-    "tabs",
-    "scripting"
-  ],
-  "host_permissions": [
-    "<all_urls>"
+    "tabs"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -22,8 +17,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "run_at": "document_start"
+      "js": ["content.js"]
     }
   ]
 }
