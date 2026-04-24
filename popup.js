@@ -7,7 +7,7 @@ const fileSizeEl = document.getElementById('fileSize');
 let durationInterval = null;
 let recordingStartTime = null;
 
-recordBtn.addEventListener('click', async () => {
+recordBtn.addEventListener('click', () => {
   chrome.runtime.sendMessage({ action: 'toggleRecording' }, (response) => {
     if (chrome.runtime.lastError) {
       console.error('Error:', chrome.runtime.lastError);
