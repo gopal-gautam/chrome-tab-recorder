@@ -14,8 +14,12 @@ let activeTabId = null;
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'toggleRecording') {
-    toggleRecording(sender.tab.id).then(() => {
-      sendResponse(recordingState);
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        toggleRecording(tabs[0].id).then(() => {
+          sendResponse(recordingState);
+        });
+      }
     });
     return true;
   } else if (request.action === 'getStatus') {
@@ -23,8 +27,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       recordingState.duration = Date.now() - recordingStartTime;
     }
     sendResponse(recordingState);
+    return false;
   } else if (request.action === 'download') {
     downloadRecording();
+    return false;
   }
 });
 

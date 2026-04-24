@@ -6,7 +6,8 @@
   "permissions": [
     "tabCapture",
     "activeTab",
-    "downloads"
+    "downloads",
+    "tabs"
   ],
   "action": {
     "default_popup": "popup.html",

@@ -9,12 +9,22 @@ let recordingStartTime = null;
 
 recordBtn.addEventListener('click', async () => {
   chrome.runtime.sendMessage({ action: 'toggleRecording' }, (response) => {
-    updateUI(response);
+    if (chrome.runtime.lastError) {
+      console.error('Error:', chrome.runtime.lastError);
+      return;
+    }
+    if (response) {
+      updateUI(response);
+    }
   });
 });
 
 downloadBtn.addEventListener('click', () => {
-  chrome.runtime.sendMessage({ action: 'download' });
+  chrome.runtime.sendMessage({ action: 'download' }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('Error:', chrome.runtime.lastError);
+    }
+  });
 });
 
 function updateUI(state) {
@@ -44,7 +54,13 @@ function updateUI(state) {
 
 function updateStatus() {
   chrome.runtime.sendMessage({ action: 'getStatus' }, (response) => {
-    updateUI(response);
+    if (chrome.runtime.lastError) {
+      console.error('Error:', chrome.runtime.lastError);
+      return;
+    }
+    if (response) {
+      updateUI(response);
+    }
   });
 }
 
